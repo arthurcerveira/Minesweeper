@@ -12,9 +12,6 @@ type GBoard = [[Char]]
 -- Tabuleiro que contem a posicao das minas (Mapa de Minas). True = mina, False = sem mina:
 type MBoard = [[Bool]]
 
-
-
-
 -- Exemplo de Tabuleiro 9x9 inicial todo fechado:
 gBoard :: GBoard
 gBoard = [['-','-','-','-','-','-','-','-','-'],
@@ -40,9 +37,6 @@ mBoard = [[False, False, False, False, False, False, False, False, False],
           [False, False, False, False, False, False, False, False, False],
           [False, False, False, False, False, False, False, False, False]]
 
-
-
-
 -- PRIMEIRA PARTE - FUNÇÕES PARA MANIPULAR OS TABULEIROS DO JOGO (MATRIZES)
 
 -- A ideia das próximas funções é permitir que a gente acesse uma lista usando um indice,
@@ -51,13 +45,16 @@ mBoard = [[False, False, False, False, False, False, False, False, False],
 -- gArr (get array): recebe uma posicao (p) e uma lista (vetor) e devolve o elemento
 -- na posição p do vetor
 
---gArr :: Int -> [t] -> t
+gArr :: Int -> [t] -> t
+gArr n l = l !! n
 
 -- uArr (update array): recebe uma posição (p), um novo valor (v), e uma lista (vetor) e devolve um
 -- novo vetor com o valor v na posição p 
 
--- uArr :: Int -> a -> [a] -> [a]
-
+uArr :: Int -> a -> [a] -> [a]
+uArr n a (l:ls)
+   | n > 0 = l : uArr (n - 1) a ls
+   | otherwise = a : ls
 
 -- Uma matriz, nada mais é do que um vetor de vetores. 
 -- Dessa forma, usando as operações anteriores, podemos criar funções para acessar os tabuleiros, como 
@@ -66,13 +63,14 @@ mBoard = [[False, False, False, False, False, False, False, False, False],
 -- gPos (get position) recebe linha (l), coluna (c) (não precisa validar) e um tabuleiro. Devolve o elemento na posicao
 -- tabuleiro[l,c]. Usar gArr na implementação
 
---gPos :: Int -> Int -> [[a]] -> a
+gPos :: Int -> Int -> [[a]] -> a
+gPos l c m = gArr c (gArr l m)
 
 -- uPos (update position): recebe um novo valor, uma posição no tabuleiro (linha e coluna) e um tabuleiro. Devolve 
 -- o tabuleiro modificado com o novo valor na posiçao lxc
 
-
---uPos :: Int -> Int ->  a -> [[a]] -> [[a]]
+uPos :: Int -> Int -> a -> [[a]] -> [[a]]
+uPos l c a m = uArr l (uArr c a (gArr l m)) m
 
 --------------- SEGUNDA PARTE: LÓGICA DO JOGO
 
