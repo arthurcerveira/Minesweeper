@@ -76,13 +76,14 @@ uPos l c a m = uArr l (uArr c a (gArr l m)) m
 
 -- isMine: recebe linha coluna e o tabuleiro de minas, e diz se a posição contém uma mina
 
--- isMine :: Int -> Int -> MBoard -> Bool
-
+isMine :: Int -> Int -> MBoard -> Bool
+isMine l c m = gPos l c m
 
 -- isValidPos: recebe o tamanho do tabuleiro (ex, em um tabuleiro 9x9, o tamanho é 9), 
 -- uma linha e uma coluna, e diz se essa posição é válida no tabuleiro
 
---isValidPos :: Int -> Int -> Int -> Bool
+isValidPos :: Int -> Int -> Int -> Bool
+isValidPos t l c = (l < t) && (c < t) && (l >= 0) && (c >= 0)
 
 -- 
 -- validMoves: Dado o tamanho do tabuleiro e uma posição atual (linha e coluna), retorna uma lista
@@ -101,13 +102,30 @@ uPos l c a m = uArr l (uArr c a (gArr l m)) m
 --  (1,0)  (1,1) ...
 --   ...    ...  ..
 
---- validMoves :: Int -> Int -> Int -> [(Int,Int)]
+adjPos :: [(Int, Int)]
+adjPos = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+
+validMoves :: Int -> Int -> Int -> [(Int,Int)]
+validMoves t l c = getAdjPos adjPos t l c
+  where 
+     getAdjPos :: [(Int, Int)] -> Int -> Int -> Int -> [(Int,Int)]
+     getAdjPos [] t l c = []
+     getAdjPos (x:xs) t l c
+       | isValidPos t ((fst x) + l) ((snd x) + c) = ((fst x) + l, (snd x) + c) : getAdjPos xs t l c
+       | otherwise = getAdjPos xs t l c
 
 
 -- cMinas: recebe uma posicao  (linha e coluna), o tabuleiro com o mapa das minas, e conta quantas minas
 -- existem nas posições adjacentes
 
--- cMinas :: Int -> Int -> MBoard -> Int
+cMinas :: Int -> Int -> MBoard -> Int
+cMinas c l m = adjMinas (validMoves (length m) l c) m
+  where
+     adjMinas :: [(Int,Int)] -> MBoard -> Int
+     adjMinas [] m = 0
+     adjMinas (x:xs) m
+       | gPos (fst x) (snd x) m = 1 + adjMinas xs m
+       | otherwise = adjMinas xs m
 
 ---
 --- abreJogada: é a função principal do jogo!!
@@ -123,28 +141,63 @@ uPos l c a m = uArr l (uArr c a (gArr l m)) m
 --- - Se a posição a ser aberta não possui minas adjacentes, abrimos ela com zero (0) e recursivamente abrimos
 --- as outras posições adjacentes a ela
 
--- abreJogada :: Int -> Int -> MBoard -> GBoard -> GBoard
-
+abreJogada :: Int -> Int -> MBoard -> GBoard -> GBoard
+abreJogada l c m g
+  | (gPos l c m) = uPos l c '*' g -- Posicao ser uma mina
+  | (gPos l c g) /= '-' = g -- Posicao estar aberta
+  | (cMinas l c m) /= 0 = uPos l c (intToChar l c m) g -- Posicao com minas adjacentes
+  | otherwise = abreJogadaRecur (validMoves (length m) l c) l c m (uPos l c '0' g) -- Posicao sem minas adjacentes
+    where
+       abreJogadaRecur :: [(Int,Int)] -> Int -> Int -> MBoard -> GBoard -> GBoard
+       abreJogadaRecur [] l c m g = g
+       abreJogadaRecur (x:xs) l c m g = abreJogadaRecur xs l c m (abreJogada (fst x) (snd x) m g)
+       
+       intToChar :: Int -> Int -> MBoard -> Char
+       intToChar l c m = (chr ((cMinas l c m) + 48))
 
 --- abreTabuleiro: recebe o mapa de Minas e o tabuleiro do jogo, e abre todo o tabuleiro do jogo, mostrando
 --- onde estão as minas e os números nas posições adjecentes às minas. Essa função é usada para mostrar
 --- todo o tabuleiro no caso de vitória ou derrota
 
--- abreTabuleiro :: MBoard -> GBoard -> GBoard
+abreTabuleiro :: MBoard -> GBoard -> GBoard
+abreTabuleiro m g = abreTabuleiroRecur 0 0 m g
+  where
+     abreTabuleiroRecur :: Int -> Int -> MBoard -> GBoard -> GBoard
+     abreTabuleiroRecur l c m g
+       | l == (length m) = abreTabuleiroRecur 0 (c + 1) m (abreJogada l c m g)
+       | c == (length m) = g
+       | otherwise = abreTabuleiroRecur (l + 1) c m (abreJogada l c m g)
 
 
 --  -- contaFechadas: Recebe um GBoard e conta quantas posições fechadas existem no tabuleiro (posições com '-')
 
--- contaFechadas :: GBoard -> Int
+contaFechadas :: GBoard -> Int
+contaFechadas [] = 0
+contaFechadas (g:gs) = contaFechadaRecur g + contaFechadas gs
+  where
+   contaFechadaRecur :: [Char] -> Int
+   contaFechadaRecur [] = 0
+   contaFechadaRecur (c:cs)
+     | c == '-' = 1 + contaFechadaRecur cs
+     | otherwise = contaFechadaRecur cs
 
 -- contaMinas: Recebe o tabuleiro de Minas (MBoard) e conta quantas minas existem no jogo
 
---contaMinas :: MBoard -> Int
+contaMinas :: MBoard -> Int
+contaMinas [] = 0
+contaMinas (m:ms) = contaMinasRecur m + contaMinas ms
+  where
+   contaMinasRecur :: [Bool] -> Int
+   contaMinasRecur [] = 0
+   contaMinasRecur (c:cs)
+     | c = 1 + contaMinasRecur cs
+     | otherwise = contaMinasRecur cs
 
--- endGame: recebe o tabuleiro de minas, o tauleiro do jogo, e diz se o jogo acabou.
+-- endGame: recebe o tabuleiro de minas, o tabuleiro do jogo, e diz se o jogo acabou.
 -- O jogo acabou quando o número de casas fechadas é igual ao numero de minas
 
--- endGame :: MBoard -> GBoard -> Bool
+endGame :: MBoard -> GBoard -> Bool
+endGame m g = contaMinas m == contaFechadas g
 
 ---
 ---  PARTE 3: FUNÇÕES PARA GERAR TABULEIROS E IMPRIMIR TABULEIROS
@@ -152,9 +205,6 @@ uPos l c a m = uArr l (uArr c a (gArr l m)) m
 
 -- printBoard: Recebe o tabuleiro do jogo e devolve uma string que é a representação visual desse tabuleiro
 -- Usar como referncia de implementacao o video sobre tabela de vendas (Aula 06)
-
-
--- printBoard :: GBoard -> String
 
 
 -- geraLista: recebe um inteiro n, um valor v, e gera uma lista contendo n vezes o valor v
