@@ -27,15 +27,15 @@ gBoard = [['-','-','-','-','-','-','-','-','-'],
 -- Exemplo de tabuleiro 9x9 com a posição das minas:
 
 mBoard :: MBoard
-mBoard = [[False, False, False, False, False, False, False, False, False],
+mBoard = [[True, False, False, False, False, False, False, False, True],
           [False, False, False, False, False, False, False, False, False],
-          [False, False, False, False, False, False, False, False, False],
+          [False, True, False, False, False, False, False, False, False],
           [False, False, False, False, False, False, False, False, False],
           [False, False, False, False, True , False, False, False, False],
           [False, False, False, False, False, True, False, False, False],
           [False, False, False, False, False, False, False, False, False],
           [False, False, False, False, False, False, False, False, False],
-          [False, False, False, False, False, False, False, False, False]]
+          [True, False, False, False, False, False, False, False, True]]
 
 -- PRIMEIRA PARTE - FUNÇÕES PARA MANIPULAR OS TABULEIROS DO JOGO (MATRIZES)
 
@@ -119,12 +119,12 @@ validMoves t l c = getAdjPos adjPos t l c
 -- existem nas posições adjacentes
 
 cMinas :: Int -> Int -> MBoard -> Int
-cMinas c l m = adjMinas (validMoves (length m) l c) m
+cMinas l c m = adjMinas (validMoves (length m) l c) m
   where
      adjMinas :: [(Int,Int)] -> MBoard -> Int
      adjMinas [] m = 0
      adjMinas (x:xs) m
-       | gPos (fst x) (snd x) m = 1 + adjMinas xs m
+       | (gPos (fst x) (snd x) m) == True = 1 + adjMinas xs m
        | otherwise = adjMinas xs m
 
 ---
@@ -146,7 +146,7 @@ abreJogada l c m g
   | (gPos l c m) = uPos l c '*' g -- Posicao ser uma mina
   | (gPos l c g) /= '-' = g -- Posicao estar aberta
   | (cMinas l c m) /= 0 = uPos l c (intToChar l c m) g -- Posicao com minas adjacentes
-  | otherwise = abreJogadaRecur (validMoves (length m) l c) l c m (uPos l c '0' g) -- Posicao sem minas adjacentes
+  | (cMinas l c m) == 0 = abreJogadaRecur (validMoves (length m) l c) l c m (uPos l c '0' g) -- Posicao sem minas adjacentes
     where
        abreJogadaRecur :: [(Int,Int)] -> Int -> Int -> MBoard -> GBoard -> GBoard
        abreJogadaRecur [] l c m g = g
@@ -164,10 +164,9 @@ abreTabuleiro m g = abreTabuleiroRecur 0 0 m g
   where
      abreTabuleiroRecur :: Int -> Int -> MBoard -> GBoard -> GBoard
      abreTabuleiroRecur l c m g
-       | l == (length m) = abreTabuleiroRecur 0 (c + 1) m (abreJogada l c m g)
        | c == (length m) = g
+       | l == (length m - 1) = abreTabuleiroRecur 0 (c + 1) m (abreJogada l c m g)
        | otherwise = abreTabuleiroRecur (l + 1) c m (abreJogada l c m g)
-
 
 --  -- contaFechadas: Recebe um GBoard e conta quantas posições fechadas existem no tabuleiro (posições com '-')
 
@@ -206,29 +205,59 @@ endGame m g = contaMinas m == contaFechadas g
 -- printBoard: Recebe o tabuleiro do jogo e devolve uma string que é a representação visual desse tabuleiro
 -- Usar como referncia de implementacao o video sobre tabela de vendas (Aula 06)
 
+printBoard :: GBoard -> String
+printBoard [] = ""
+printBoard (g:gs) = "| " ++ (printBoardLinha g) ++ "|\n" ++ (printBoard gs)
+  where
+    printBoardLinha :: [Char] -> String
+    printBoardLinha [] = ""
+    printBoardLinha (l:ls) = l : " " ++ printBoardLinha ls
+
+-- Imprime mapa de minas para debug
+printMBoard :: MBoard -> String
+printMBoard [] = ""
+printMBoard (g:gs) = (printMBoardLinha g) ++ "\n" ++ (printMBoard gs)
+  where
+    printMBoardLinha :: [Bool] -> String
+    printMBoardLinha [] = ""
+    printMBoardLinha (l:ls)
+      | (l) = "True\t" ++ printMBoardLinha ls
+      | otherwise = "False\t" ++ printMBoardLinha ls
 
 -- geraLista: recebe um inteiro n, um valor v, e gera uma lista contendo n vezes o valor v
 
--- geraLista :: Int -> a -> [a]
+geraLista :: Int -> a -> [a]
+geraLista n v
+  | n > 0 = v : geraLista (n - 1) v
+  | otherwise = []
 
 -- geraTabuleiro: recebe o tamanho do tabuleiro e gera um tabuleiro  novo, todo fechado (todas as posições
 -- contém '-'). A função geraLista deve ser usada na implementação
 
--- geraNovoTabuleiro :: Int -> GBoard
+geraNovoTabuleiro :: Int -> GBoard
+geraNovoTabuleiro n = geraNovoTabuleiroAux n n
+  where
+    geraNovoTabuleiroAux n m
+      | n > 0 = geraLista m '-' : geraNovoTabuleiroAux (n - 1) m
+      | otherwise = []
 
 -- geraMapaDeMinasZerado: recebe o tamanho do tabuleiro e gera um mapa de minas zerado, com todas as posições
 -- contendo False. Usar geraLista na implementação
 
--- geraMapaDeMinasZerado :: Int -> MBoard
-
+geraMapaDeMinasZerado :: Int -> MBoard
+geraMapaDeMinasZerado n = geraMapaDeMinasZeradoAux n n
+  where
+    geraMapaDeMinasZeradoAux n m
+      | n > 0 = geraLista m False : geraMapaDeMinasZeradoAux (n - 1) m
+      | otherwise = []
 
 -- A função a seguir (main) deve ser substituida pela função main comentada mais
 -- abaixo quando o jogo estiver pronto
 
-main :: IO ()
-main = print "Alo Mundo!"
+-- main :: IO ()
+-- main = print "Alo Mundo!"
 
-{-
+-- {-
 
 -- Aqui está o Motor do Jogo.
 -- Essa parte deve ser descomentada quando as outras funções estiverem implementadas
@@ -244,6 +273,7 @@ main = do
 gameLoop :: MBoard -> GBoard -> IO ()
 gameLoop mb gb = do
    putStr (printBoard gb)
+  --  putStr (printMBoard mb)
    putStr "Digite uma linha: "
    linha <- getLine
    putStr "Digite uma coluna: "
@@ -282,5 +312,3 @@ addMines n size b = do
                 case isMine l c b of
                       True -> addMines n size b
                       False -> addMines (n-1) size (uPos l c True b)
-
--}
